@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/88474dd1af48/mod_csi/mod_csi.lua
+repo: https://hg.prosody.im/prosody-modules/file/88474dd1af48/mod_csi/mod_csi.lua 
+version: mod_csi/mod_csi.lua@88474dd1af48
+last-fetched: 2017-11-10
+sha256sum: 70f38c3071f035a9cd1c47ff7a1a88413ce4e4d52c806ef52c65a5aa63c70073

@@ -1,0 +1,4 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/88474dd1af48/mod_e2e_policy/mod_e2e_policy.lua
+repo: https://hg.prosody.im/prosody-modules/file/88474dd1af48/mod_e2e_policy/mod_e2e_policy.lua 
+version: mod_e2e_policy/mod_e2e_policy.lua@88474dd1af48
+sha256sum: 929758870cd81e3a203e18d3dcd143f1512e20ac28b6d0b81bcfd41ae03501c9

@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/file/88474dd1af48/mod_s2s_auth_dane/mod_s2s_auth_dane.lua
+repo: https://hg.prosody.im/prosody-modules/file/88474dd1af48/mod_s2s_auth_dane/mod_s2s_auth_dane.lua
+version: mod_s2s_auth_dane/mod_s2s_auth_dane.lua@88474dd1af48
+last-fetched: 2017-11-10
+sha256sum: 2c079bddd55b5631d3c48bf4d4ed28878e484530c760220603a86354342bcc92

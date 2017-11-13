@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/dbba101601b4/mod_smacks/mod_smacks.lua
+repo: https://hg.prosody.im/prosody-modules/file/dbba101601b4/mod_smacks/mod_smacks.lua
+version: mod_smacks/mod_smacks.lua@dbba101601b4
+last-fetched: 2017-11-10
+sha256sum: 79fcf830f56c5487ed6024f0922e4a5e2cb3a0948c8444b805bc6f9a7f2cbf14
