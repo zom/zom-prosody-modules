@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/tip/mod_mam_muc/mod_mam_muc.lua
+repo: https://modules.prosody.im/mod_mam_muc.html
+version: mod_mam_muc/mod_mam_muc.lua@a7c2df6b2662
+last-fetched: 2018-01-03
+sha256sum: b95e75d8d59d478989710c3eb3354885d857703a6a4a426c5f8af1fe4358471f
