@@ -1,0 +1,6 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/tip/mod_omemo_all_access/mod_omemo_all_access.lua
+repo: https://hg.prosody.im/prosody-modules/file/tip/mod_omemo_all_access/mod_omemo_all_access.lua
+upstream: https://github.com/iNPUTmice/omemo_all_access
+version: mod_omemo_all_access/mod_omemo_all_access.lua@933049a60ce6
+last-fetched: 2018-01-06
+sha256sum: 74c9e33c10b0ab95030ae47f7a388885f4e1552efefb6fae3c222fcaea17412e
