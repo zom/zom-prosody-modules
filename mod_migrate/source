@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/tip/mod_migrate/mod_migrate.lua
+repo: https://hg.prosody.im/prosody-modules/file/tip/mod_migrate/mod_migrate.lua
+version: mod_migrate/mod_migrate.lua@d6badf56ab5f
+last-fetched: 2018-02-14
+sha256sum: 9708ab93274e88416b28a60f1f4d9694c78503a93ed2e33a0b1cc0b54d309437
