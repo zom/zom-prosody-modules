@@ -1,5 +1,5 @@
-src: https://github.com/chrisballinger/prosody-modules/raw/xep_0357_priority/mod_cloud_notify/mod_cloud_notify.lua
-repo: https://github.com/chrisballinger/prosody-modules/blob/xep_0357_priority/mod_cloud_notify/mod_cloud_notify.lua
-version: https://github.com/chrisballinger/prosody-modules/commit/40486273306f13ea68236745858df9b95a07c4fb
-last-fetched: 2017-11-09
-sha256sum: be64a98b4e26c341a4a79de682b437f2f70ae8c1dee43a1780f50a1576fd31c8
+src: https://hg.prosody.im/prosody-modules/raw-file/cfcb020bcd1d/mod_cloud_notify/mod_cloud_notify.lua
+repo: https://hg.prosody.im/prosody-modules/file/cfcb020bcd1d/mod_cloud_notify/mod_cloud_notify.lua 
+version: mod_cloud_notify/mod_cloud_notify.lua@cfcb020bcd1d
+last-fetched: 2018-09-11
+sha256sum: 8203d5a8898f53ae9145304ac99d9e944e1833aa4ecd6b8d3df03e80bb079302

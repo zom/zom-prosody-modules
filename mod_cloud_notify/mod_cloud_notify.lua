@@ -1,10 +1,14 @@
 -- XEP-0357: Push (aka: My mobile OS vendor won't let me have persistent TCP connections)
 -- Copyright (C) 2015-2016 Kim Alvefur
--- Copyright (C) 2017 Thilo Molitor
+-- Copyright (C) 2017-2018 Thilo Molitor
 --
 -- This file is MIT/X11 licensed.
 
 local t_insert = table.insert;
+local s_match = string.match;
+local s_sub = string.sub;
+local os_time = os.time;
+local next = next;
 local st = require"util.stanza";
 local jid = require"util.jid";
 local dataform = require"util.dataforms".new;
@@ -14,14 +18,80 @@ local hashes = require"util.hashes";
 local xmlns_push = "urn:xmpp:push:0";
 
 -- configuration
-local include_priority = module:get_option_boolean("push_notification_with_priority", true);
 local include_body = module:get_option_boolean("push_notification_with_body", false);
 local include_sender = module:get_option_boolean("push_notification_with_sender", false);
-local max_push_errors = module:get_option_number("push_max_errors", 50);
+local max_push_errors = module:get_option_number("push_max_errors", 16);
+local max_push_devices = module:get_option_number("push_max_devices", 5);
+local dummy_body = module:get_option_string("push_notification_important_body", "New Message!");
 
 local host_sessions = prosody.hosts[module.host].sessions;
 local push_errors = {};
 local id2node = {};
+
+-- ordered table iterator, allow to iterate on the natural order of the keys of a table,
+-- see http://lua-users.org/wiki/SortedIteration
+local function __genOrderedIndex( t )
+	local orderedIndex = {}
+	for key in pairs(t) do
+		table.insert( orderedIndex, key )
+	end
+	-- sort in reverse order (newest one first)
+	table.sort( orderedIndex, function(a, b)
+		if a == nil or t[a] == nil or b == nil or t[b] == nil then return false end
+		-- only one timestamp given, this is the newer one
+		if t[a].timestamp ~= nil and t[b].timestamp == nil then return true end
+		if t[a].timestamp == nil and t[b].timestamp ~= nil then return false end
+		-- both timestamps given, sort normally
+		if t[a].timestamp ~= nil and t[b].timestamp ~= nil then return t[a].timestamp > t[b].timestamp end
+		return false	-- normally not reached
+	end)
+	return orderedIndex
+end
+local function orderedNext(t, state)
+	-- Equivalent of the next function, but returns the keys in timestamp
+	-- order. We use a temporary ordered key table that is stored in the
+	-- table being iterated.
+
+	local key = nil
+	--print("orderedNext: state = "..tostring(state) )
+	if state == nil then
+		-- the first time, generate the index
+		t.__orderedIndex = __genOrderedIndex( t )
+		key = t.__orderedIndex[1]
+	else
+		-- fetch the next value
+		for i = 1, #t.__orderedIndex do
+			if t.__orderedIndex[i] == state then
+				key = t.__orderedIndex[i+1]
+			end
+		end
+	end
+
+	if key then
+		return key, t[key]
+	end
+
+	-- no more value to return, cleanup
+	t.__orderedIndex = nil
+	return
+end
+local function orderedPairs(t)
+	-- Equivalent of the pairs() function on tables. Allows to iterate
+	-- in order
+	return orderedNext, t, nil
+end
+
+-- small helper function to return new table with only "maximum" elements containing only the newest entries
+local function reduce_table(table, maximum)
+	local count = 0;
+	local result = {};
+	for key, value in orderedPairs(table) do
+		count = count + 1;
+		if count > maximum then break end
+		result[key] = value;
+	end
+	return result;
+end
 
 -- For keeping state across reloads while caching reads
 local push_store = (function()
@@ -42,7 +112,7 @@ local push_store = (function()
 		return push_services[user], true;
 	end
 	function api:set(user, data)
-		push_services[user] = data;
+		push_services[user] = reduce_table(data, max_push_devices);
 		local ok, err = store:set(user, push_services[user]);
 		if not ok then
 			module:log("error", "Error writing push notification storage for user '%s': %s", user, tostring(err));
@@ -58,6 +128,7 @@ local push_store = (function()
 	return api;
 end)();
 
+
 -- Forward declarations, as both functions need to reference each other
 local handle_push_success, handle_push_error;
 
@@ -68,6 +139,7 @@ function handle_push_error(event)
 	if node == nil then return false; end		-- unknown stanza? Ignore for now!
 	local from = stanza.attr.from;
 	local user_push_services = push_store:get(node);
+	local changed = false;
 	
 	for push_identifier, _ in pairs(user_push_services) do
 		local stanza_id = hashes.sha256(push_identifier, true);
@@ -85,11 +157,13 @@ function handle_push_error(event)
 							if session.push_identifier == push_identifier then
 								session.push_identifier = nil;
 								session.push_settings = nil;
+								session.first_hibernated_push = nil;
 							end
 						end
 					end
 					-- save changed global config
-					push_store:set_identifier(node, push_identifier, nil);
+					changed = true;
+					user_push_services[push_identifier] = nil
 					push_errors[push_identifier] = nil;
 					-- unhook iq handlers for this identifier (if possible)
 					if module.unhook then
@@ -103,6 +177,9 @@ function handle_push_error(event)
 					.."NOT increasing error count for this identifier", error_type, condition, push_identifier);
 			end
 		end
+	end
+	if changed then
+		push_store:set(node, user_push_services);
 	end
 	return true;
 end
@@ -157,8 +234,8 @@ local function push_enable(event)
 		jid = push_jid;
 		node = push_node;
 		include_payload = include_payload;
-		count = 0;
 		options = publish_options and st.preserialize(publish_options);
+		timestamp = os_time();
 	};
 	local ok = push_store:set_identifier(origin.username, push_identifier, push_service);
 	if not ok then
@@ -166,6 +243,7 @@ local function push_enable(event)
 	else
 		origin.push_identifier = push_identifier;
 		origin.push_settings = push_service;
+		origin.first_hibernated_push = nil;
 		origin.log("info", "Push notifications enabled for %s (%s)", tostring(stanza.attr.from), tostring(origin.push_identifier));
 		origin.send(st.reply(stanza));
 	end
@@ -189,6 +267,7 @@ local function push_disable(event)
 			if origin.push_identifier == key then
 				origin.push_identifier = nil;
 				origin.push_settings = nil;
+				origin.first_hibernated_push = nil;
 			end
 			user_push_services[key] = nil;
 			push_errors[key] = nil;
@@ -209,21 +288,75 @@ local function push_disable(event)
 end
 module:hook("iq-set/self/"..xmlns_push..":disable", push_disable);
 
--- clone a stanza and strip it
-local function strip_stanza(stanza)
-	local tags = {};
-	local new = { name = stanza.name, attr = { xmlns = stanza.attr.xmlns, type = stanza.attr.type }, tags = tags };
-	for i=1,#stanza do
-		local child = stanza[i];
-		if type(child) == "table" then		-- don't add raw text nodes
-			if child.name then
-				child = strip_stanza(child);
-				t_insert(tags, child);
-			end
-			t_insert(new, child);
+-- Patched version of util.stanza:find() that supports giving stanza names
+-- without their namespace, allowing for every namespace.
+local function find(self, path)
+	local pos = 1;
+	local len = #path + 1;
+
+	repeat
+		local xmlns, name, text;
+		local char = s_sub(path, pos, pos);
+		if char == "@" then
+			return self.attr[s_sub(path, pos + 1)];
+		elseif char == "{" then
+			xmlns, pos = s_match(path, "^([^}]+)}()", pos + 1);
 		end
+		name, text, pos = s_match(path, "^([^@/#]*)([/#]?)()", pos);
+		name = name ~= "" and name or nil;
+		if pos == len then
+			if text == "#" then
+				local child = xmlns ~= nil and self:get_child(name, xmlns) or self:child_with_name(name);
+				return child and child:get_text() or nil;
+			end
+			return xmlns ~= nil and self:get_child(name, xmlns) or self:child_with_name(name);
+		end
+		self = xmlns ~= nil and self:get_child(name, xmlns) or self:child_with_name(name);
+	until not self
+	return nil;
+end
+
+-- is this push a high priority one (this is needed for ios apps not using voip pushes)
+local function is_important(stanza)
+	local st_name = stanza and stanza.name or nil;
+	if not st_name then return false; end	-- nonzas are never important here
+	if st_name == "presence" then
+		return false;						-- same for presences
+	elseif st_name == "message" then
+		-- unpack carbon copies
+		local stanza_direction = "in";
+		local carbon;
+		local st_type;
+		-- support carbon copied message stanzas having an arbitrary message-namespace or no message-namespace at all
+		if not carbon then carbon = find(stanza, "{urn:xmpp:carbons:2}/forwarded/message"); end
+		if not carbon then carbon = find(stanza, "{urn:xmpp:carbons:1}/forwarded/message"); end
+		stanza_direction = carbon and stanza:child_with_name("sent") and "out" or "in";
+		if carbon then stanza = carbon; end
+		st_type = stanza.attr.type;
+		
+		-- headline message are always not important
+		if st_type == "headline" then return false; end
+		
+		-- carbon copied outgoing messages are not important
+		if carbon and stanza_direction == "out" then return false; end
+		
+		-- We can't check for body contents in encrypted messages, so let's treat them as important
+		-- Some clients don't even set a body or an empty body for encrypted messages
+		
+		-- check omemo https://xmpp.org/extensions/inbox/omemo.html
+		if stanza:get_child("encrypted", "eu.siacs.conversations.axolotl") or stanza:get_child("encrypted", "urn:xmpp:omemo:0") then return true; end
+		
+		-- check xep27 pgp https://xmpp.org/extensions/xep-0027.html
+		if stanza:get_child("x", "jabber:x:encrypted") then return true; end
+		
+		-- check xep373 pgp (OX) https://xmpp.org/extensions/xep-0373.html
+		if stanza:get_child("openpgp", "urn:xmpp:openpgp:0") then return true; end
+		
+		local body = stanza:get_child_text("body");
+		if st_type == "groupchat" and stanza:get_child_text("subject") then return false; end		-- groupchat subjects are not important here
+		return body ~= nil and body ~= "";			-- empty bodies are not important
 	end
-	return setmetatable(new, st.stanza_mt);
+	return false;		-- this stanza wasn't one of the above cases --> it is not important, too
 end
 
 local push_form = dataform {
@@ -232,29 +365,27 @@ local push_form = dataform {
 	{ name = "pending-subscription-count"; type = "text-single"; };
 	{ name = "last-message-sender"; type = "jid-single"; };
 	{ name = "last-message-body"; type = "text-single"; };
-	{ name = "last-message-priority"; type = "text-single"; };
 };
 
 -- http://xmpp.org/extensions/xep-0357.html#publishing
-local function handle_notify_request(stanza, node, user_push_services)
+local function handle_notify_request(stanza, node, user_push_services, log_push_decline)
 	local pushes = 0;
-	if not user_push_services or not #user_push_services then return pushes end
+	if not user_push_services or next(user_push_services) == nil then return pushes end
 	
 	for push_identifier, push_info in pairs(user_push_services) do
 		local send_push = true;		-- only send push to this node when not already done for this stanza or if no stanza is given at all
 		if stanza then
 			if not stanza._push_notify then stanza._push_notify = {}; end
 			if stanza._push_notify[push_identifier] then
-				module:log("debug", "Already sent push notification for %s@%s to %s (%s)", node, module.host, push_info.jid, tostring(push_info.node));
+				if log_push_decline then
+					module:log("debug", "Already sent push notification for %s@%s to %s (%s)", node, module.host, push_info.jid, tostring(push_info.node));
+				end
 				send_push = false;
 			end
 			stanza._push_notify[push_identifier] = true;
 		end
 		
 		if send_push then
-			-- increment count and save it
-			push_info.count = push_info.count + 1;
-			push_store:set_identifier(node, push_identifier, push_info);
 			-- construct push stanza
 			local stanza_id = hashes.sha256(push_identifier, true);
 			local push_publish = st.iq({ to = push_info.jid, from = module.host, type = "set", id = stanza_id })
@@ -263,32 +394,18 @@ local function handle_notify_request(stanza, node, user_push_services)
 						:tag("item")
 							:tag("notification", { xmlns = xmlns_push });
 			local form_data = {
-				["message-count"] = tostring(push_info.count);
+				-- hardcode to 1 because other numbers are just meaningless (the XEP does not specify *what exactly* to count)
+				["message-count"] = "1";
 			};
 			if stanza and include_sender then
 				form_data["last-message-sender"] = stanza.attr.from;
 			end
 			if stanza and include_body then
 				form_data["last-message-body"] = stanza:get_child_text("body");
-			end
-			if stanza and include_priority then
-				if stanza:get_child("body") or stanza:get_child("encrypted", "eu.siacs.conversations.axolotl") then
-					form_data["last-message-priority"] = "high"
-				else
-					form_data["last-message-priority"] = "low"
-				end
+			elseif stanza and dummy_body and is_important(stanza) then
+				form_data["last-message-body"] = tostring(dummy_body);
 			end
 			push_publish:add_child(push_form:form(form_data));
-			if stanza and push_info.include_payload == "stripped" then
-				push_publish:tag("payload", { type = "stripped" })
-					:add_child(strip_stanza(stanza));
-				push_publish:up(); -- / payload
-			end
-			if stanza and push_info.include_payload == "full" then
-				push_publish:tag("payload", { type = "full" })
-					:add_child(st.clone(stanza));
-				push_publish:up(); -- / payload
-			end
 			push_publish:up(); -- / notification
 			push_publish:up(); -- / publish
 			push_publish:up(); -- / pubsub
@@ -296,7 +413,7 @@ local function handle_notify_request(stanza, node, user_push_services)
 				push_publish:tag("publish-options"):add_child(st.deserialize(push_info.options));
 			end
 			-- send out push
-			module:log("debug", "Sending push notification for %s@%s to %s (%s)", node, module.host, push_info.jid, tostring(push_info.node));
+			module:log("debug", "Sending%s push notification for %s@%s to %s (%s)", form_data["last-message-body"] and " important" or "", node, module.host, push_info.jid, tostring(push_info.node));
 			-- module:log("debug", "PUSH STANZA: %s", tostring(push_publish));
 			-- handle push errors for this node
 			if push_errors[push_identifier] == nil then
@@ -324,7 +441,7 @@ end
 module:hook("message/offline/handle", function(event)
 	local node, user_push_services = get_push_settings(event.stanza, event.origin);
 	module:log("debug", "Invoking cloud handle_notify_request() for offline stanza");
-	handle_notify_request(event.stanza, node, user_push_services);
+	handle_notify_request(event.stanza, node, user_push_services, true);
 end, 1);
 
 -- publish on unacked smacks message
@@ -333,7 +450,17 @@ local function process_smacks_stanza(stanza, session)
 		session.log("debug", "Invoking cloud handle_notify_request() for smacks queued stanza");
 		local user_push_services = {[session.push_identifier] = session.push_settings};
 		local node = get_push_settings(stanza, session);
-		handle_notify_request(stanza, node, user_push_services);
+		if handle_notify_request(stanza, node, user_push_services, true) ~= 0 then
+			if session.hibernating and not session.first_hibernated_push then
+				-- if important stanzas are treated differently (pushed with last-message-body field set to dummy string)
+				-- and the message was important (e.g. had a last-message-body field) OR if we treat all pushes equally,
+				-- then record the time of first push in the session for the smack module which will extend its hibernation
+				-- timeout based on the value of session.first_hibernated_push
+				if not dummy_body or (dummy_body and is_important(stanza)) then
+					session.first_hibernated_push = os_time();
+				end
+			end
+		end
 	end
 	return stanza;
 end
@@ -341,13 +468,27 @@ end
 local function process_smacks_queue(queue, session)
 	if not session.push_identifier then return; end
 	local user_push_services = {[session.push_identifier] = session.push_settings};
+	local notified = { unimportant = false; important = false }
 	for i=1, #queue do
 		local stanza = queue[i];
 		local node = get_push_settings(stanza, session);
-		session.log("debug", "Invoking cloud handle_notify_request() for smacks queued stanza: %d", i);
-		if handle_notify_request(stanza, node, user_push_services) ~= 0 then
-			session.log("debug", "Cloud handle_notify_request() > 0, not notifying for other queued stanzas");
-			return;		-- only notify for one stanza in the queue, not for all in a row
+		stanza_type = "unimportant"
+		if dummy_body and is_important(stanza) then stanza_type = "important"; end
+		if not notified[stanza_type] then		-- only notify if we didn't try to push for this stanza type already
+			-- session.log("debug", "Invoking cloud handle_notify_request() for smacks queued stanza: %d", i);
+			if handle_notify_request(stanza, node, user_push_services, false) ~= 0 then
+				if session.hibernating and not session.first_hibernated_push then
+					-- if important stanzas are treated differently (pushed with last-message-body field set to dummy string)
+					-- and the message was important (e.g. had a last-message-body field) OR if we treat all pushes equally,
+					-- then record the time of first push in the session for the smack module which will extend its hibernation
+					-- timeout based on the value of session.first_hibernated_push
+					if not dummy_body or (dummy_body and is_important(stanza)) then
+						session.first_hibernated_push = os_time();
+					end
+				end
+				session.log("debug", "Cloud handle_notify_request() > 0, not notifying for other queued stanzas of type %s", stanza_type);
+				notified[stanza_type] = true
+			end
 		end
 	end
 end
@@ -356,6 +497,7 @@ end
 local function hibernate_session(event)
 	local session = event.origin;
 	local queue = event.queue;
+	session.first_hibernated_push = nil;
 	-- process unacked stanzas
 	process_smacks_queue(queue, session);
 	-- process future unacked (hibernated) stanzas
@@ -367,11 +509,7 @@ local function restore_session(event)
 	local session = event.resumed;
 	if session then		-- older smacks module versions send only the "intermediate" session in event.session and no session.resumed one
 		filters.remove_filter(session, "stanzas/out", process_smacks_stanza);
-		-- this means the counter of outstanding push messages can be reset as well
-		if session.push_settings then
-			session.push_settings.count = 0;
-			push_store:set_identifier(session.username, session.push_identifier, session.push_settings);
-		end
+		session.first_hibernated_push = nil;
 	end
 end
 
@@ -386,7 +524,7 @@ end
 -- archive message added
 local function archive_message_added(event)
 	-- event is: { origin = origin, stanza = stanza, for_user = store_user, id = id }
-	-- only notify for new mam messages when at least one device is only
+	-- only notify for new mam messages when at least one device is online
 	if not event.for_user or not host_sessions[event.for_user] then return; end
 	local stanza = event.stanza;
 	local user_session = host_sessions[event.for_user].sessions;
@@ -396,10 +534,10 @@ local function archive_message_added(event)
 	-- only notify if the stanza destination is the mam user we store it for
 	if event.for_user == to then
 		local user_push_services = push_store:get(to);
-		if not #user_push_services then return end
+		if next(user_push_services) == nil then return end
 		
 		-- only notify nodes with no active sessions (smacks is counted as active and handled separate)
-		local notify_push_sevices = {};
+		local notify_push_services = {};
 		for identifier, push_info in pairs(user_push_services) do
 			local identifier_found = nil;
 			for _, session in pairs(user_session) do
@@ -412,11 +550,11 @@ local function archive_message_added(event)
 			if identifier_found then
 				identifier_found.log("debug", "Not cloud notifying '%s' of new MAM stanza (session still alive)", identifier);
 			else
-				notify_push_sevices[identifier] = push_info;
+				notify_push_services[identifier] = push_info;
 			end
 		end
 
-		handle_notify_request(event.stanza, to, notify_push_sevices);
+		handle_notify_request(event.stanza, to, notify_push_services, true);
 	end
 end
 
@@ -429,7 +567,7 @@ local function send_ping(event)
 	local user = event.user;
 	local user_push_services = push_store:get(user);
 	local push_services = event.push_services or user_push_services;
-	handle_notify_request(nil, user, push_services);
+	handle_notify_request(nil, user, push_services, true);
 end
 -- can be used by other modules to ping one or more (or all) push endpoints
 module:hook("cloud-notify-ping", send_ping);

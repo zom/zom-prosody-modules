@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/178ebea5097c/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
+repo: https://hg.prosody.im/prosody-modules/file/178ebea5097c/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
+version: mod_measure_message_e2ee/mod_measure_message_e2ee.lua@178ebea5097c
+last-fetched: 2018-09-11
+sha256sum: c31006403fca83df1644806ebd05e5962cdb2ba30cd432ac2228d631c851a27a

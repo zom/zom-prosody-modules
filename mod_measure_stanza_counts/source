@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/512405077709/mod_measure_stanza_counts/mod_measure_stanza_counts.lua
+repo: https://hg.prosody.im/prosody-modules/file/512405077709/mod_measure_stanza_counts/mod_measure_stanza_counts.lua
+version: mod_measure_stanza_counts/mod_measure_stanza_counts.lua@512405077709
+last-fetched: 2018-09-11
+sha256sum: 0bad7e8fda218fcb04b2f30a4bc27f00aac18ab421b13a5de1c9cca7fe990817

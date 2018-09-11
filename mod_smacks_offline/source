@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/b912cb8e0b3c/mod_smacks_offline/mod_smacks_offline.lu
+repo:https://hg.prosody.im/prosody-modules/file/b912cb8e0b3c/mod_smacks_offline/mod_smacks_offline.lua 
+version: mod_smacks_offline/mod_smacks_offline.lua@b912cb8e0b3c
+last-fetched: 2018-09-11
+sha256sum: 4ffba598c67c5727a2be61de2811771e2e73b48896e5c9cd15cbf998194380ad
