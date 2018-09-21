@@ -1,0 +1,5 @@
+src: https://github.com/abeluck/mod_http_upload_s3/raw/master/mod_http_upload_s3.lua
+repo: https://github.com/abeluck/mod_http_upload_s3 
+version: 419c0a13782884e0722cb436fed991a1a6daa0a9
+last-fetched: 2018-09-20
+sha256sum: 72127d21efd08d993bf6846e1005ca3e53ed09f3dd15906998edb700657d7a1a
