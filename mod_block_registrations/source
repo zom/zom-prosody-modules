@@ -1,0 +1,6 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/tip/mod_block_registrations/mod_block_registrations.lua
+repo:
+https://hg.prosody.im/prosody-modules/file/tip/mod_block_registrations/mod_block_registrations.lua
+version: mod_block_registrations.lua@3114b403362d
+last-fetched: 2018-09-21
+sha256sum: dfbb5f145976b28a60a0ffd907b1aedf9ef532a0514a0beabdf34b052b66aa79
