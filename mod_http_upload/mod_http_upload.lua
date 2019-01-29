@@ -1,6 +1,6 @@
 -- mod_http_upload
 --
--- Copyright (C) 2015-2017 Kim Alvefur
+-- Copyright (C) 2015-2018 Kim Alvefur
 --
 -- This file is MIT/X11 licensed.
 --
@@ -109,6 +109,13 @@ local function check_quota(username, host, does_it_fit)
 	return sum < quota;
 end
 
+local measure_slot = function () end
+if module.measure then
+	-- COMPAT 0.9
+	-- module:measure was added in 0.10
+	measure_slot = module:measure("slot", "sizes");
+end
+
 local function handle_request(origin, stanza, xmlns, filename, filesize)
 	local username, host = origin.username, origin.host;
 	-- local clients only
@@ -140,14 +147,14 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 
 	if not created then
 		module:log("error", "Could not create directory for slot: %s", err);
-		return nil, st.error_reply(stanza, "wait", "internal-server-failure");
+		return nil, st.error_reply(stanza, "wait", "internal-server-error");
 	end
 
 	local ok = datamanager.list_append(username, host, module.name, {
 		filename = filename, dir = random_dir, size = filesize, time = os.time() });
 
 	if not ok then
-		return nil, st.error_reply(stanza, "wait", "internal-server-failure");
+		return nil, st.error_reply(stanza, "wait", "internal-server-error");
 	end
 
 	local slot = random_dir.."/"..filename;
@@ -156,6 +163,8 @@ local function handle_request(origin, stanza, xmlns, filename, filesize)
 	module:add_timer(900, function()
 		pending_slots[slot] = nil;
 	end);
+
+	measure_slot(filesize);
 
 	origin.log("debug", "Given upload slot %q", slot);
 
@@ -213,8 +222,26 @@ module:hook("iq/host/"..legacy_namespace..":request", function (event)
 	return true;
 end);
 
+local measure_upload = function () end
+if module.measure then
+	-- COMPAT 0.9
+	-- module:measure was added in 0.10
+	measure_upload = module:measure("upload", "sizes");
+end
+
 -- http service
+local function set_cross_domain_headers(response)
+	local headers = response.headers;
+	headers.access_control_allow_methods = "GET, PUT, OPTIONS";
+	headers.access_control_allow_headers = "Content-Type";
+	headers.access_control_max_age = "7200";
+	headers.access_control_allow_origin = response.request.headers.origin or "*";
+	return response;
+end
+
 local function upload_data(event, path)
+	set_cross_domain_headers(event.response);
+
 	local uploader = pending_slots[path];
 	if not uploader then
 		module:log("warn", "Attempt to upload to unknown slot %q", path);
@@ -252,6 +279,7 @@ local function upload_data(event, path)
 		os.remove(full_filename);
 		return 500;
 	end
+	measure_upload(#event.request.body);
 	module:log("info", "File uploaded by %s to slot %s", uploader, random_dir);
 	return 201;
 end
@@ -303,6 +331,7 @@ end
 local serve_uploaded_files = http_files.serve(storage_path);
 
 local function serve_head(event, path)
+	set_cross_domain_headers(event.response);
 	event.response.send = send_response_sans_body;
 	event.response.send_file = send_response_sans_body;
 	return serve_uploaded_files(event, path);
@@ -310,7 +339,7 @@ end
 
 local function serve_hello(event)
 	event.response.headers.content_type = "text/html;charset=utf-8"
-	return "<!DOCTYPE html>\n<h1>Hello from mod_"..module.name.."!</h1>\n";
+	return "<!DOCTYPE html>\n<h1>Hello from mod_"..module.name.." on "..module.host.."!</h1>\n";
 end
 
 module:provides("http", {
@@ -320,7 +349,31 @@ module:provides("http", {
 		["GET /*"] = serve_uploaded_files;
 		["HEAD /*"] = serve_head;
 		["PUT /*"] = upload_data;
+
+		["OPTIONS /*"] = function (event)
+			set_cross_domain_headers(event.response);
+			return "";
+		end;
 	};
 });
 
 module:log("info", "URL: <%s>; Storage path: %s", module:http_url(), storage_path);
+
+function module.command(args)
+	datamanager = require "core.storagemanager".olddm;
+	-- luacheck: ignore 421/user
+	if args[1] == "expire" then
+		local split = require "util.jid".prepped_split;
+		for i = 2, #args do
+			local user, host = split(args[i]);
+			if user then
+				assert(expire(user, host));
+			else
+				for user in assert(datamanager.users(host, module.name, "list")) do
+					expire(user, host);
+				end
+			end
+		end
+	end
+end
+

@@ -1,5 +1,5 @@
-src: https://hg.prosody.im/prosody-modules/raw-file/8d9aed6d1f87/mod_http_upload/mod_http_upload.lua
-repo: https://hg.prosody.im/prosody-modules/file/8d9aed6d1f87/mod_http_upload/mod_http_upload.lua
-version: mod_http_upload/mod_http_upload.lua@8d9aed6d1f87
-last-fetched: 2017-11-10
-sha256sum: 80d5a15dcb94459aa6e402d892e4c383d6510d3903d9148f0e98b3a729e4ec28
+src: https://hg.prosody.im/prosody-modules/raw-file/a5a50cd34386/mod_http_upload/mod_http_upload.lua
+repo: https://hg.prosody.im/prosody-modules/file/a5a50cd34386/mod_http_upload
+version: mod_http_upload/mod_http_upload.lua@a5a50cd34386
+last-fetched: 2019-01-29
+sha256sum: 92428a86ff15097b99d5fb2e2bd7849016fbf6f5c24938709f986e5ebc4f306d

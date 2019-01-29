@@ -1,4 +1,5 @@
-src: https://hg.prosody.im/prosody-modules/raw-file/58d61459cdb1/mod_e2e_policy/mod_e2e_policy.lua
-repo: https://hg.prosody.im/prosody-modules/file/58d61459cdb1/mod_e2e_policy/mod_e2e_policy.lua
-version: mod_e2e_policy/mod_e2e_policy.lua@58d61459cdb1
-sha256sum: 5740d0fc5010690cc5bf2721ef8adab787824046504726f12d935790aa070be3
+src: https://hg.prosody.im/prosody-modules/raw-file/a76c420eca61/mod_e2e_policy/mod_e2e_policy.lua
+repo: https://hg.prosody.im/prosody-modules/file/a76c420eca61/mod_e2e_policy/mod_e2e_policy.lua
+version: mod_e2e_policy/mod_e2e_policy.lua@a76c420eca61
+last-fetched: 2019-01-29
+sha256sum: 9edfdd31e693375acdab44d8ecbe761ca62f6e4ade81fecb62ca823887b5a03b

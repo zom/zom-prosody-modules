@@ -1,5 +1,5 @@
-src: https://hg.prosody.im/prosody-modules/raw-file/178ebea5097c/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
-repo: https://hg.prosody.im/prosody-modules/file/178ebea5097c/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
-version: mod_measure_message_e2ee/mod_measure_message_e2ee.lua@178ebea5097c
-last-fetched: 2018-09-11
-sha256sum: c31006403fca83df1644806ebd05e5962cdb2ba30cd432ac2228d631c851a27a
+src: https://hg.prosody.im/prosody-modules/raw-file/c414a7e884b3/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
+repo: https://hg.prosody.im/prosody-modules/file/c414a7e884b3/mod_measure_message_e2ee/mod_measure_message_e2ee.lua
+version: mod_measure_message_e2ee/mod_measure_message_e2ee.lua@c414a7e884b3
+last-fetched: 2019-01-29
+sha256sum: ed606f0693dfd06955ca9bca641f27540b7bc7c9706c9c89e20c15aa0c361f60

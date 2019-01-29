@@ -1,5 +1,5 @@
-src: https://hg.prosody.im/prosody-modules/raw-file/dbba101601b4/mod_smacks/mod_smacks.lua
-repo: https://hg.prosody.im/prosody-modules/file/dbba101601b4/mod_smacks/mod_smacks.lua
-version: mod_smacks/mod_smacks.lua@67f1d1f22625
-last-fetched: 2018-09-11
-sha256sum: 79fcf830f56c5487ed6024f0922e4a5e2cb3a0948c8444b805bc6f9a7f2cbf14
+src: https://hg.prosody.im/prosody-modules/raw-file/9b6206f23151/mod_smacks/mod_smacks.lua
+repo: https://hg.prosody.im/prosody-modules/file/9b6206f23151/mod_smacks
+version: mod_smacks/mod_smacks.lua@9b6206f23151
+last-fetched: 2019-01-29
+sha256sum: 333debeca4b05567a63d5ace49f8c43e585ed2d1efc60d5ee7c02c87892b8033
