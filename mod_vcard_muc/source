@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/f16b021e8a61/mod_vcard_muc/mod_vcard_muc.lua
+repo: https://hg.prosody.im/prosody-modules/file/f16b021e8a61/mod_vcard_muc/mod_vcard_muc.lua
+version: mod_vcard_muc/mod_vcard_muc.lua@f16b021e8a61
+last-fetched: 2019-01-29
+sha256sum: d39a9e02278fdb928447eda382f1c01e949fdd9328233ceb2e6fa135e586ed42
