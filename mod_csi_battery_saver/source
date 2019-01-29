@@ -1,0 +1,5 @@
+src: https://hg.prosody.im/prosody-modules/raw-file/75930e4c2478/mod_csi_battery_saver/mod_csi_battery_saver.lua
+repo: https://hg.prosody.im/prosody-modules/file/75930e4c2478/mod_csi_battery_saver/mod_csi_battery_saver.lua
+version: mod_csi_battery_saver/mod_csi_battery_saver.lua@75930e4c2478
+last-fetched: 2019-01-29
+sha256sum: 49a4ce816fe89fe937c1b93c85bec00af777fa531183c43867be074c48d685d9
